@@ -51,3 +51,6 @@ class ContainerIDDetector:
         """
 
         return self.model.export(format=format)
+
+#containe number-ocr
+#roboflow universe container id

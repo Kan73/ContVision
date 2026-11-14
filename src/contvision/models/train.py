@@ -1,40 +1,34 @@
 
 import torch
 from pathlib import Path
-
-from src.contvision.models.YOLO.model import ContainerIDDetector
+from ultralytics import YOLO
 
 
 # ==========================================
-# CONFIGURACION
+# CONFIGURATION
 # ==========================================
 
-DATASET = "dataset/data.yaml"
+ROOT = Path(__file__).resolve().parents[3]
 
+DATASET_DIR = ROOT / "dataset_split"
+DATASET = str(DATASET_DIR / "data.yaml")
 MODEL = "yolo26s.pt"
 
 EPOCHS = 100
-
 IMAGE_SIZE = 640
-
 BATCH_SIZE = 8
-
-WORKERS = 4
 
 DEVICE = 0 if torch.cuda.is_available() else "cpu"
 
 PROJECT = "runs/container_id"
-
-EXPERIMENT_NAME = "yolo26s_baseline"
+EXPERIMENT = "yolo26s_baseline"
 
 
 # ==========================================
-# COMPROBAR GPU
+# HARDWARE CHECK
 # ==========================================
 
 print("\n========== HARDWARE ==========")
-
-print("CUDA disponible:", torch.cuda.is_available())
 
 if torch.cuda.is_available():
 
@@ -49,47 +43,80 @@ if torch.cuda.is_available():
         "GB"
     )
 
-
-# ==========================================
-# CARGAR MODELO
-# ==========================================
-
-print("\n========== CARGANDO MODELO ==========")
-
-detector = ContainerIDDetector(MODEL)
+else:
+    print("CUDA unavailable. Using CPU.")
 
 
 # ==========================================
-# ENTRENAMIENTO
+# DATASET CHECK
 # ==========================================
 
-print("\n========== INICIANDO ENTRENAMIENTO ==========")
+print("\n========== DATASET ==========")
 
-results = detector.train(
+for split in ["train", "val", "test"]:
+
+    images_dir = DATASET_DIR / split / "images"
+    labels_dir = DATASET_DIR / split / "labels"
+
+    if not images_dir.exists():
+        raise FileNotFoundError(images_dir)
+
+    if not labels_dir.exists():
+        raise FileNotFoundError(labels_dir)
+
+    images = [
+        p for p in images_dir.iterdir()
+        if p.suffix.lower() in [".jpg", ".jpeg", ".png", ".bmp"]
+    ]
+
+    labels = list(labels_dir.glob("*.txt"))
+
+    print(f"\n{split.upper()}")
+    print("Images:", len(images))
+    print("Labels:", len(labels))
+
+    if split in ["train", "val"] and len(images) == 0:
+        raise RuntimeError(f"No images found in {split}")
+
+
+# ==========================================
+# LOAD MODEL
+# ==========================================
+
+print("\n========== LOADING MODEL ==========")
+
+model = YOLO(MODEL)
+
+
+# ==========================================
+# TRAIN
+# ==========================================
+
+print("\n========== STARTING TRAINING ==========")
+
+results = model.train(
 
     data=DATASET,
 
-    # Training
     epochs=EPOCHS,
     imgsz=IMAGE_SIZE,
     batch=BATCH_SIZE,
-    device=DEVICE,
-    workers=WORKERS,
 
-    # Fine tuning
+    device=DEVICE,
+    workers=4,
+
     pretrained=True,
     optimizer="auto",
+
     patience=20,
 
-    # Augmentations
+    # Augmentation
     degrees=5.0,
     translate=0.05,
     scale=0.2,
 
     fliplr=0.0,
     flipud=0.0,
-
-    perspective=0.0001,
 
     hsv_h=0.015,
     hsv_s=0.5,
@@ -103,28 +130,23 @@ results = detector.train(
     seed=42,
     deterministic=True,
 
-    # Saving
+    # Output
     project=PROJECT,
-    name=EXPERIMENT_NAME,
+    name=EXPERIMENT,
 
     save=True,
     plots=True,
-
-    # Logging
     verbose=True
 )
 
 
-# RESULTADOS
+# ==========================================
+# FINISHED
+# ==========================================
 
-
-print("\n========== ENTRENAMIENTO FINALIZADO ==========")
-
-print("Mejores pesos guardados en:")
+print("\n========== TRAINING FINISHED ==========")
 
 print(
-    Path(PROJECT)
-    / EXPERIMENT_NAME
-    / "weights"
-    / "best.pt"
+    "Best weights:",
+    f"{PROJECT}/{EXPERIMENT}/weights/best.pt"
 )

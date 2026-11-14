@@ -1,0 +1,11 @@
+
+path: ./dataset_split
+
+train: train/images
+val: val/images
+test: test/images
+
+nc: 1
+
+names:
+  0: container_id
