@@ -3,13 +3,13 @@ name = "contvision"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12,<=3.13"
 dependencies = [
-    "easyocr>=1.7.2",
     "jiwer>=4.0.0",
     "matplotlib>=3.11.2",
-    "opencv-python>=5.0.0.93",
+    "opencv-python==4.10.0.84",
     "paddleocr>=3.7.0",
+    "paddlepaddle>=3.3.1",
     "pandas>=3.1.1",
     "pillow>=13.0.0",
     "streamlit>=1.67.0",
@@ -24,3 +24,8 @@ contvision = "contvision:main"
 [build-system]
 requires = ["uv_build>=0.13.0,<0.14.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+constraint-dependencies = [
+    "opencv-contrib-python==4.10.0.84",
+]
