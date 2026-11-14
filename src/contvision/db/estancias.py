@@ -31,12 +31,12 @@ def _estancia_abierta(conn: sqlite3.Connection, contenedor_id: int) -> sqlite3.R
     ).fetchone()
 
 
-def _abrir(conn, contenedor_id, almacen_id, ts, avistamiento_id, inferida: bool) -> None:
+def _abrir(conn, contenedor_id, almacen_id, ts, avistamiento_id, entrada_inferida: bool) -> None:
     conn.execute(
         """INSERT INTO estancia (contenedor_id, almacen_id, entrada_ts,
-                                 avistamiento_entrada_id, inferida)
+                                 avistamiento_entrada_id, entrada_inferida)
            VALUES (?, ?, ?, ?, ?)""",
-        (contenedor_id, almacen_id, ts, avistamiento_id, int(inferida)),
+        (contenedor_id, almacen_id, ts, avistamiento_id, int(entrada_inferida)),
     )
 
 
@@ -63,9 +63,9 @@ def aplicar(
     if tipo_fuente in ("entrada", "interior"):
         if not misma:
             if abierta is not None:
-                # Entró en otro almacén sin leer su salida: se cierra como inferida.
+                # Entró en otro almacén sin leer su salida: se cierra con salida inferida.
                 conn.execute(
-                    "UPDATE estancia SET salida_ts = ?, inferida = 1 WHERE id = ?",
+                    "UPDATE estancia SET salida_ts = ?, salida_inferida = 1 WHERE id = ?",
                     (ts, abierta["id"]),
                 )
                 eventos.append(EventoPendiente(
@@ -80,7 +80,7 @@ def aplicar(
             mensaje = f"{codigo} entra en {almacen_nombre}"
             if inferida:
                 mensaje += " (entrada inferida por cámara interior)"
-            eventos.append(EventoPendiente("ENTRADA", mensaje, almacen_id, {"inferida": inferida}))
+            eventos.append(EventoPendiente("ENTRADA", mensaje, almacen_id, {"entrada_inferida": inferida}))
 
     elif tipo_fuente == "salida":
         if misma:

@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS estancia (
     salida_ts                TEXT,
     avistamiento_entrada_id  INTEGER REFERENCES avistamiento(id),
     avistamiento_salida_id   INTEGER REFERENCES avistamiento(id),
-    inferida                 INTEGER NOT NULL DEFAULT 0
+    entrada_inferida         INTEGER NOT NULL DEFAULT 0,  -- la entrada se dedujo de una cámara interior
+    salida_inferida          INTEGER NOT NULL DEFAULT 0   -- la salida se dedujo al aparecer en otro almacén
 );
 
 -- Log de actividad (Inicio e Historial)

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import sqlite3
 
+from ..conexion import dia_local_de_hora, limites_dia_local
+
 
 def resumen(conn: sqlite3.Connection, hoy: str | None = None) -> dict:
-    """KPIs globales. ``hoy`` es ``YYYY-MM-DD`` (UTC); por defecto, la fecha actual."""
+    """KPIs globales. ``hoy`` es un día local ``YYYY-MM-DD`` (Europe/Madrid); por defecto, hoy."""
+    inicio, fin = limites_dia_local(hoy)
     return dict(conn.execute(
         """SELECT
              (SELECT COUNT(*) FROM almacen)                                       AS almacenes,
@@ -15,24 +18,39 @@ def resumen(conn: sqlite3.Connection, hoy: str | None = None) -> dict:
              (SELECT COUNT(*) FROM estancia WHERE salida_ts IS NULL)              AS en_almacenes,
              (SELECT COUNT(*) FROM avistamiento WHERE estado = 'dudosa' AND revisado = 0) AS dudosas_pendientes,
              (SELECT COUNT(DISTINCT contenedor_id) FROM avistamiento
-               WHERE substr(timestamp, 1, 10) = COALESCE(:hoy, date('now')))    AS contenedores_hoy,
+               WHERE timestamp >= :ini AND timestamp < :fin)                       AS contenedores_hoy,
              (SELECT COUNT(*) FROM evento WHERE nivel = 'aviso')                  AS avisos,
              (SELECT COUNT(*) FROM evento WHERE nivel = 'error')                  AS errores""",
-        {"hoy": hoy},
+        {"ini": inicio, "fin": fin},
     ).fetchone())
 
 
+# Una dudosa ya corregida a mano conserva estado = 'dudosa' (es lo que hizo el OCR) con
+# revisado = 1. En las estadísticas cuenta como «revisada», no como dudosa pendiente.
+_ESTADO_EFECTIVO = "CASE WHEN estado = 'dudosa' AND revisado = 1 THEN 'revisada' ELSE estado END"
+ESTADOS = ("valida", "corregida", "dudosa", "revisada")
+
+
 def avistamientos_por_estado(conn: sqlite3.Connection) -> dict[str, int]:
-    return {r["estado"]: r["n"] for r in conn.execute(
-        "SELECT estado, COUNT(*) AS n FROM avistamiento GROUP BY estado")}
+    """``{valida, corregida, dudosa (pendientes), revisada (dudosas resueltas a mano)}``."""
+    conteo = dict.fromkeys(ESTADOS, 0)
+    conteo.update({r["e"]: r["n"] for r in conn.execute(
+        f"SELECT {_ESTADO_EFECTIVO} AS e, COUNT(*) AS n FROM avistamiento GROUP BY e")})
+    return conteo
 
 
 def avistamientos_por_dia(conn: sqlite3.Connection) -> list[dict]:
-    return [dict(r) for r in conn.execute(
-        """SELECT substr(timestamp, 1, 10) AS dia, COUNT(*) AS n,
-                  SUM(estado = 'valida') AS validas, SUM(estado = 'corregida') AS corregidas,
-                  SUM(estado = 'dudosa') AS dudosas
-             FROM avistamiento GROUP BY dia ORDER BY dia""")]
+    """``[{dia, n, validas, corregidas, dudosas, revisadas}, …]`` por día **local** (Europe/Madrid)."""
+    plural = {"valida": "validas", "corregida": "corregidas", "dudosa": "dudosas", "revisada": "revisadas"}
+    dias: dict[str, dict] = {}
+    for f in conn.execute(
+        f"""SELECT substr(timestamp, 1, 13) AS hora, {_ESTADO_EFECTIVO} AS e, COUNT(*) AS n
+              FROM avistamiento GROUP BY hora, e"""):
+        dia = dia_local_de_hora(f["hora"])
+        d = dias.setdefault(dia, {"dia": dia, "n": 0, **dict.fromkeys(plural.values(), 0)})
+        d["n"] += f["n"]
+        d[plural[f["e"]]] += f["n"]
+    return [dias[k] for k in sorted(dias)]
 
 
 def actividad(

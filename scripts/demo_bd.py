@@ -121,7 +121,7 @@ def demo(conn) -> None:
            for a in q.almacenes.listar(conn)])
 
     titulo("Contenedores presentes en Terminal Valencia")
-    tabla([{"código": e.codigo, "desde": e.entrada_ts[:16], "inferida": bool(e.inferida)}
+    tabla([{"código": e.codigo, "desde": e.entrada_ts[:16], "entrada inf.": bool(e.entrada_inferida), "salida inf.": bool(e.salida_inferida)}
            for e in q.almacenes.presentes(conn, valencia)])
 
     titulo(f"Ficha de {A}")
@@ -133,11 +133,11 @@ def demo(conn) -> None:
             "conf": a.confianza, "estado": a.estado} for a in q.contenedores.avistamientos(conn, A)])
     print(c("  Recorrido (estancias):", "gris"))
     tabla([{"almacén": e.almacen, "entrada": e.entrada_ts[:16], "salida": (e.salida_ts or "")[:16] or None,
-            "inferida": bool(e.inferida)} for e in q.contenedores.recorrido(conn, A)])
+            "entrada inf.": bool(e.entrada_inferida), "salida inf.": bool(e.salida_inferida)} for e in q.contenedores.recorrido(conn, A)])
 
     titulo(f"Recorrido de {B} (traslado sin salida)")
     tabla([{"almacén": e.almacen, "entrada": e.entrada_ts[:16], "salida": (e.salida_ts or "")[:16] or None,
-            "inferida": bool(e.inferida)} for e in q.contenedores.recorrido(conn, B)])
+            "entrada inf.": bool(e.entrada_inferida), "salida inf.": bool(e.salida_inferida)} for e in q.contenedores.recorrido(conn, B)])
 
     # 4 ─ Revisión manual ----------------------------------------------------
     titulo("4. Cola de revisión y corrección manual")
@@ -149,7 +149,7 @@ def demo(conn) -> None:
     db.registrar_correccion(conn, dudosa.id, elegido, usuario="revisor")
     print(f"  Avistamiento {dudosa.id} asignado a {elegido}.")
     tabla([{"almacén": e.almacen, "entrada": e.entrada_ts[:16], "salida": (e.salida_ts or "")[:16] or None,
-            "inferida": bool(e.inferida)} for e in q.contenedores.recorrido(conn, elegido)])
+            "entrada inf.": bool(e.entrada_inferida), "salida inf.": bool(e.salida_inferida)} for e in q.contenedores.recorrido(conn, elegido)])
     comprobar(not q.contenedores.pendientes_revision(conn), "la cola de revisión queda vacía")
 
     # 5 ─ Historial de eventos ----------------------------------------------
@@ -181,7 +181,7 @@ def demo(conn) -> None:
     # 6 ─ Consistencia --------------------------------------------------------
     titulo("6. Consistencia: estancias incrementales == recalculadas")
     def instantanea():
-        return conn.execute("""SELECT contenedor_id, almacen_id, entrada_ts, salida_ts, inferida
+        return conn.execute("""SELECT contenedor_id, almacen_id, entrada_ts, salida_ts, entrada_inferida, salida_inferida
                                  FROM estancia ORDER BY contenedor_id, entrada_ts""").fetchall()
     antes = [tuple(r) for r in instantanea()]
     db.recalcular_todos(conn)

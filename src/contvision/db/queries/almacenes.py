@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
+from ..conexion import dia_local_de_hora
 from ._modelos import Almacen, Estancia, Fuente
 
 _SELECT_ALMACEN = """
@@ -51,19 +52,26 @@ def presentes(conn: sqlite3.Connection, almacen_id: int) -> list[Estancia]:
 def entradas_salidas_por_dia(
     conn: sqlite3.Connection, almacen_id: int, desde: str | None = None
 ) -> list[dict]:
-    """``[{dia, entradas, salidas}, …]`` (días en UTC) desde la fecha indicada."""
-    return [dict(r) for r in conn.execute(
+    """``[{dia, entradas, salidas}, …]`` por día **local** (Europe/Madrid) desde ``desde`` (``YYYY-MM-DD``)."""
+    filas = conn.execute(
         """WITH movs AS (
-               SELECT substr(entrada_ts, 1, 10) AS dia, 1 AS ent, 0 AS sal
+               SELECT substr(entrada_ts, 1, 13) AS hora, 1 AS ent, 0 AS sal
                  FROM estancia WHERE almacen_id = :a
                UNION ALL
-               SELECT substr(salida_ts, 1, 10), 0, 1
+               SELECT substr(salida_ts, 1, 13), 0, 1
                  FROM estancia WHERE almacen_id = :a AND salida_ts IS NOT NULL)
-           SELECT dia, SUM(ent) AS entradas, SUM(sal) AS salidas
-             FROM movs WHERE (:desde IS NULL OR dia >= :desde)
-            GROUP BY dia ORDER BY dia""",
-        {"a": almacen_id, "desde": desde},
-    )]
+           SELECT hora, SUM(ent) AS entradas, SUM(sal) AS salidas FROM movs GROUP BY hora""",
+        {"a": almacen_id},
+    )
+    dias: dict[str, dict] = {}
+    for f in filas:
+        dia = dia_local_de_hora(f["hora"])
+        if desde and dia < desde:
+            continue
+        d = dias.setdefault(dia, {"dia": dia, "entradas": 0, "salidas": 0})
+        d["entradas"] += f["entradas"]
+        d["salidas"] += f["salidas"]
+    return [dias[k] for k in sorted(dias)]
 
 
 def reparto_propietarios(conn: sqlite3.Connection, almacen_id: int) -> list[dict]:

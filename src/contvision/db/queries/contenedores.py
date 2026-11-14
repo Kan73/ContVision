@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 
 from ._modelos import Avistamiento, Contenedor, Estancia
+from .eventos import rango_prefijo
 
 _SELECT_CONT = """
     SELECT c.*, a.nombre AS almacen_actual
@@ -34,12 +35,15 @@ def listar(
     limite: int = 100,
 ) -> list[Contenedor]:
     """Contenedores filtrados, los vistos más recientemente primero."""
-    sql = _SELECT_CONT + """ WHERE (:alm IS NULL OR c.almacen_actual_id = :alm)
-                             AND (:prop IS NULL OR c.propietario = :prop)
-                             AND (:pref IS NULL OR c.codigo LIKE :pref || '%')
-                           ORDER BY c.ultima_vez DESC LIMIT :lim"""
-    return [Contenedor.desde_fila(r) for r in conn.execute(
-        sql, {"alm": almacen_id, "prop": propietario, "pref": prefijo, "lim": limite})]
+    condiciones, params = ["1 = 1"], []
+    if almacen_id is not None:
+        condiciones.append("c.almacen_actual_id = ?"); params.append(almacen_id)
+    if propietario:
+        condiciones.append("c.propietario = ?"); params.append(propietario)
+    if prefijo:
+        condiciones.append("c.codigo >= ? AND c.codigo < ?"); params += list(rango_prefijo(prefijo))
+    sql = _SELECT_CONT + " WHERE " + " AND ".join(condiciones) + " ORDER BY c.ultima_vez DESC LIMIT ?"
+    return [Contenedor.desde_fila(r) for r in conn.execute(sql, (*params, limite))]
 
 
 def avistamientos(conn: sqlite3.Connection, codigo: str) -> list[Avistamiento]:

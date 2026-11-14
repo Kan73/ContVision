@@ -99,7 +99,10 @@ def historial(
     if almacen_id is not None:
         condiciones.append("ev.almacen_id = ?"); params.append(almacen_id)
     if codigo:
-        condiciones.append("c.codigo LIKE ? || '%'"); params.append(codigo)
+        # Rango en vez de LIKE: usa el índice de contenedor.codigo y luego ix_evento_contenedor.
+        condiciones.append(
+            "ev.contenedor_id IN (SELECT id FROM contenedor WHERE codigo >= ? AND codigo < ?)")
+        params += list(rango_prefijo(codigo))
     if antes_de:
         condiciones.append("(ev.timestamp < ? OR (ev.timestamp = ? AND ev.id < ?))")
         params += [antes_de[0], antes_de[0], antes_de[1]]
@@ -111,6 +114,15 @@ def historial(
     eventos = [Evento.desde_fila(r) for r in filas[:limite]]
     cursor = (eventos[-1].timestamp, eventos[-1].id) if len(filas) > limite else None
     return Pagina(eventos, cursor)
+
+
+def rango_prefijo(prefijo: str) -> tuple[str, str]:
+    """``(desde, hasta)`` tal que ``desde <= codigo < hasta`` equivale a «empieza por prefijo».
+
+    Los códigos solo llevan A-Z y 0-9, así que ``~`` (posterior a todos ellos) cierra el rango.
+    """
+    prefijo = prefijo.upper()
+    return prefijo, prefijo + "~"
 
 
 def ultimo_id(conn: sqlite3.Connection) -> int:

@@ -80,7 +80,8 @@ class Estancia(_DesdeFila):
     almacen: str
     entrada_ts: str
     salida_ts: str | None
-    inferida: int
+    entrada_inferida: int   # 1 = la entrada se dedujo de una cámara interior
+    salida_inferida: int    # 1 = la salida se dedujo al aparecer en otro almacén
     lat: float | None = None
     lon: float | None = None
 
