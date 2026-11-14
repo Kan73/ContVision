@@ -5,3 +5,6 @@ raw/
 ?env/
 ?venv/
 runs/
+images_label/
+images/
+labels/
