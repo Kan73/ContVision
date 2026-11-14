@@ -32,6 +32,52 @@ class Almacen(_DesdeFila):
 
 
 @dataclass(slots=True, frozen=True)
+class AlmacenMapa(_DesdeFila):
+    """Un punto del mapa: el almacén con su ocupación y su actividad reciente."""
+    id: int
+    nombre: str
+    tipo: str
+    lat: float
+    lon: float
+    capacidad: int | None
+    presentes: int
+    entradas_hoy: int
+    eventos_24h: int
+    avisos_24h: int      # eventos de nivel aviso o error
+
+    @property
+    def ocupacion(self) -> float | None:
+        return self.presentes / self.capacidad if self.capacidad else None
+
+    @property
+    def tasa_avisos(self) -> float | None:
+        """Proporción de eventos de las últimas 24 h que son avisos o errores (None si no hubo eventos)."""
+        return self.avisos_24h / self.eventos_24h if self.eventos_24h else None
+
+
+@dataclass(slots=True, frozen=True)
+class KpisAlmacen(_DesdeFila):
+    presentes: int
+    capacidad: int | None
+    entradas_hoy: int
+    salidas_hoy: int
+    estancia_media_horas: float | None   # None si aún no hay estancias cerradas fiables
+    estancias_cerradas: int              # nº de estancias con las que se calculó la media
+
+    @property
+    def ocupacion(self) -> float | None:
+        return self.presentes / self.capacidad if self.capacidad else None
+
+
+@dataclass(slots=True, frozen=True)
+class Flujo(_DesdeFila):
+    """Traslados de contenedores de un almacén a otro."""
+    origen_id: int
+    destino_id: int
+    n: int
+
+
+@dataclass(slots=True, frozen=True)
 class Fuente(_DesdeFila):
     id: int
     nombre: str
@@ -39,6 +85,7 @@ class Fuente(_DesdeFila):
     tipo: str
     activa: int
     n_avistamientos: int = 0
+    ultima_lectura: str | None = None   # timestamp ISO UTC de su último avistamiento
 
 
 @dataclass(slots=True, frozen=True)

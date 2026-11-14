@@ -15,7 +15,9 @@ from ..config import ZONA_HORARIA
 
 # Versión del esquema (PRAGMA user_version). Súbela al cambiar schema.sql y añade el paso en _migrar().
 #   1 → esquema inicial (sin user_version)      2 → estancia.inferida separada en entrada_/salida_inferida
-VERSION_ESQUEMA = 2
+#   3 → índices de estancia por almacén y fecha (los crea schema.sql; no necesita paso en _migrar)
+#   4 → ix_avist_fuente pasa a ser ix_avist_fuente_ts (fuente_id, timestamp)
+VERSION_ESQUEMA = 4
 
 
 def conectar(ruta: str | Path, *, inicializar: bool = True) -> sqlite3.Connection:
@@ -52,6 +54,7 @@ def _migrar(conn: sqlite3.Connection) -> None:
     with transaccion(conn):
         if conn.execute("PRAGMA user_version").fetchone()[0] == VERSION_ESQUEMA:
             return   # otro proceso migró mientras esperábamos el bloqueo
+        conn.execute("DROP INDEX IF EXISTS ix_avist_fuente")   # v3 → v4: lo sustituye ix_avist_fuente_ts
         columnas = {fila[1] for fila in conn.execute("PRAGMA table_info(estancia)")}
         if "inferida" in columnas:   # v1 → v2
             conn.execute("ALTER TABLE estancia ADD COLUMN entrada_inferida INTEGER NOT NULL DEFAULT 0")

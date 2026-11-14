@@ -58,6 +58,12 @@ div[data-testid="stMetric"] { padding: 0.1rem 0.2rem; }
 .cv-aviso-aviso .cv-icono { background: rgb(230, 140, 30); }
 .cv-aviso-error .cv-icono { background: rgb(220, 60, 60); }
 
+/* Leyenda del mapa */
+.cv-leyenda { display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; font-size: 0.82rem;
+              color: rgba(128, 128, 128, 1); margin-top: -0.4rem; }
+.cv-ley { display: inline-flex; align-items: center; }
+.cv-ley-punto { display: inline-block; width: 0.65rem; height: 0.65rem; border-radius: 50%; margin-right: 0.4rem; }
+
 /* Códigos sueltos fuera del feed */
 .codigo { font-family: ui-monospace, "JetBrains Mono", monospace; letter-spacing: 0.04em; }
 </style>
