@@ -4,7 +4,9 @@ raw/
 *.rar
 ?env/
 ?venv/
-runs/
+runs/detect
 images_label/
 images/
 labels/
+*.txt
+*.jpg
